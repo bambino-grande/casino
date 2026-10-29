@@ -1,0 +1,85 @@
+name: casino
+
+services:
+  kazik-db:
+    image: postgres:18
+    container_name: kazik-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${KAZIK_DB}
+      POSTGRES_USER: ${KAZIK_DB_USER}
+      POSTGRES_PASSWORD: ${KAZIK_DB_PASSWORD}
+    ports:
+      - "${KAZIK_DB_PORT:-5544}:5432"
+    volumes:
+      - kazik_db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KAZIK_DB_USER} -d ${KAZIK_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    networks:
+      - kazik-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.3.2
+    container_name: kazik-keycloak
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HEALTH_ENABLED: "true"
+      KEYCLOAK_IDENTITY_CLIENT_SECRET: ${KEYCLOAK_IDENTITY_CLIENT_SECRET}
+      KAZIK_DEMO_PASSWORD: ${KAZIK_DEMO_PASSWORD}
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./docker/keycloak/kazik-realm.json:/opt/keycloak/data/import/kazik-realm.json:ro
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && printf 'GET /health/ready HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && grep -q UP <&3"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    networks:
+      - kazik-network
+
+  kazik-server:
+    build:
+      context: .
+      dockerfile: kazik/Dockerfile
+    container_name: kazik-server
+    restart: unless-stopped
+    depends_on:
+      kazik-db:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    environment:
+      KAZIK_DB_URL: jdbc:postgresql://kazik-db:5432/${KAZIK_DB}
+      KAZIK_DB_USER: ${KAZIK_DB_USER}
+      KAZIK_DB_PASSWORD: ${KAZIK_DB_PASSWORD}
+      KEYCLOAK_ISSUER_URI: http://localhost:8080/realms/kazik
+      KEYCLOAK_JWK_SET_URI: http://keycloak:8080/realms/kazik/protocol/openid-connect/certs
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      KEYCLOAK_PUBLIC_URL: http://localhost:8080
+      KEYCLOAK_IDENTITY_CLIENT_SECRET: ${KEYCLOAK_IDENTITY_CLIENT_SECRET}
+      ZBANK_BASE_URL: ${ZBANK_BASE_URL}
+      ZBANK_API_KEY: ${ZBANK_API_KEY}
+      ZBANK_ACCOUNT_ID: ${ZBANK_ACCOUNT_ID}
+      SBP_PHONE: ${SBP_PHONE}
+      SBP_BANK: ${SBP_BANK}
+      SBP_RECIPIENT: ${SBP_RECIPIENT}
+      KAZIK_PRIZES_DIR: /data/prizes
+    volumes:
+      - ./prizes:/data/prizes:ro
+    ports:
+      - "8081:8081"
+    networks:
+      - kazik-network
+
+volumes:
+  kazik_db_data:
+
+networks:
+  kazik-network:
+    driver: bridge

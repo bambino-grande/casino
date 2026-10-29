@@ -1,0 +1,87 @@
+{
+  "realm": "kazik",
+  "enabled": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "USER"
+      },
+      {
+        "name": "ADMIN"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "kazik-swagger",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "redirectUris": [
+        "http://localhost:8081/*"
+      ],
+      "webOrigins": [
+        "*"
+      ]
+    },
+    {
+      "clientId": "kazik-identity",
+      "enabled": true,
+      "secret": "${KEYCLOAK_IDENTITY_CLIENT_SECRET}",
+      "serviceAccountsEnabled": true,
+      "standardFlowEnabled": false
+    }
+  ],
+  "users": [
+    {
+      "username": "service-account-kazik-identity",
+      "enabled": true,
+      "serviceAccountClientId": "kazik-identity",
+      "clientRoles": {
+        "realm-management": [
+          "manage-users",
+          "view-realm"
+        ]
+      }
+    },
+    {
+      "username": "admin",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KAZIK_DEMO_PASSWORD}"
+        }
+      ],
+      "realmRoles": [
+        "ADMIN"
+      ]
+    },
+    {
+      "username": "player",
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${KAZIK_DEMO_PASSWORD}"
+        }
+      ],
+      "realmRoles": [
+        "USER"
+      ]
+    }
+  ],
+  "components": {
+    "org.keycloak.userprofile.UserProfileProvider": [
+      {
+        "providerId": "declarative-user-profile",
+        "config": {
+          "kc.user.profile.config": [
+            "{\"attributes\": [{\"name\": \"username\"}, {\"name\": \"email\"}, {\"name\": \"firstName\"}, {\"name\": \"lastName\"}]}"
+          ]
+        }
+      }
+    ]
+  }
+}
