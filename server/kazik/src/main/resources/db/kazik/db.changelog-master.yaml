@@ -1,0 +1,11 @@
+databaseChangeLog:
+  - include:
+      file: db/kazik/changes/001-wallet.sql
+  - include:
+      file: db/kazik/changes/002-payments.sql
+  - include:
+      file: db/kazik/changes/003-games.sql
+  - include:
+      file: db/kazik/changes/004-rewards.sql
+  - include:
+      file: db/kazik/changes/005-data.sql
